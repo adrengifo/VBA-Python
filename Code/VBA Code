@@ -1,0 +1,347 @@
+Option Explicit
+Sub Python()
+
+'|\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+'|                                          Main Code                                               |
+'|  Gets Date value and inputs it into python, then runs clean-up and cross reference macros.       |
+'|                  If it cannot find a value it adds it to the Missing Loadfiles sheet.            |
+'|\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+Dim Row As Integer
+Dim Date1 As Date
+Dim File As String
+Dim oShell As Object
+Dim oExec As Object
+Dim oOutput As Object
+Dim s As String
+Dim sLine As String
+Dim Arg As Variant
+Dim oCmd As String
+Dim Value As String
+Dim Script As String
+Dim Python As String
+Dim CSV As String
+
+
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\Stops the screen from "freaking out"\\\\\\\\\\\\\\\\\\\
+Application.ScreenUpdating = False
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+'\\\\\\\\\\\\\\\\\Gets date from Last Run cell
+Workbooks("Import_Folder_Check.xlsm").Activate
+Date1 = Range("G25").Value
+
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\Code to Launch Python Script\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+MsgBox "Loading Please Wait", , "Export Folder Check Engine"
+Script = "I:\RDM_Share\temp\Andres\Import\Import_FindNewFolders_Final.py"
+Python = "C:\Program Files (x86)\Python35-32\python.exe"
+Arg = Format((Date1), "yyyymmdd")
+MsgBox Arg
+9 Set oShell = CreateObject("WScript.Shell")
+oCmd = Python & " " & Script & " " & Arg
+Set oExec = oShell.Exec(oCmd)
+Set oOutput = oExec.stdout
+
+While Not oOutput.atendofstream
+    sLine = oOutput.readline
+    If sLine <> "" Then s = s & sLine & vbNewLine
+Wend
+Value = CreateObject("WScript.Shell").Exec(oCmd).stdout.readall
+MsgBox Value
+Debug.Print s
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\Opens the csv created by the python
+
+CSV = "Import_Folders_" & Date & ".txt"
+File = "I:\RDM_Share\temp\Andres\Import\Folder Checks\" & CSV
+Workbooks.Open (File)
+Workbooks(CSV).Activate
+Call CSV_Transfer
+Call Check_Folder
+Workbooks("Import_Folder_Check.xlsm").Activate
+Sheets(1).Select
+Range("G25").Value = Date
+Application.ScreenUpdating = True
+End Sub
+
+
+Sub CSV_Transfer()
+Dim CSV As String
+Dim File As String
+
+'|//////////////////////////////////////////////////////////////////////////////|
+'|                                                                              |
+'|           Opens the txt file and converts it to columns, and adjusts         |
+'|            column width and cleanses some of the case names                  |
+'|//////////////////////////////////////////////////////////////////////////////|
+
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\Stops the screen from "freaking out"\\\\\\\\\
+Application.ScreenUpdating = False
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+CSV = "Import_Folders_" & Date & ".txt"
+Workbooks(CSV).Activate
+Sheets(1).Select
+Columns("A:A").Select
+    Selection.TextToColumns Destination:=Range("A1"), DataType:=xlDelimited, _
+        TextQualifier:=xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=True, _
+        Semicolon:=False, Comma:=False, Space:=False, Other:=True, OtherChar _
+        :="+", FieldInfo:=Array(Array(1, 1), Array(2, 1), Array(3, 1)), _
+        TrailingMinusNumbers:=True
+    Columns("A:E").Select
+    Selection.Columns.AutoFit
+    With Selection
+        .HorizontalAlignment = xlGeneral
+        .VerticalAlignment = xlCenter
+    End With
+    With Selection
+        .HorizontalAlignment = xlLeft
+        .VerticalAlignment = xlCenter
+        Cells.Replace What:="â€“", Replacement:="–", LookAt:=xlPart, SearchOrder _
+        :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+    End With
+    
+    Columns("C:C").Select
+    Selection.NumberFormat = "m/d/yyyy"
+    Range("C1").Select
+    
+    Columns("E:G").Select
+    Selection.ClearContents
+    
+'|///////////////////////////////////////////////////////////////////////////////|
+'|           Cleans the case name.... a lot of cleansing since                   |
+'|    previously there were no naming convention, also removes non-cases         |
+'|                       picked up by the script                                 |
+'|///////////////////////////////////////////////////////////////////////////////|
+
+    Columns("D:D").Select
+    Range("D1666").Activate
+    Selection.Replace What:="(imported)", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+    Selection.Replace What:="_imported", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+    Selection.Replace What:="_extended", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+    
+    Selection.Replace What:="_updated", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+        
+    Selection.Replace What:="-updateddat", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+        
+    Selection.Replace What:="(done)", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+    
+    Selection.Replace What:="_epa", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+        
+    Selection.Replace What:="_PKI", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+        
+    Selection.Replace What:="_VIP", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+        
+    Selection.Replace What:="_VIP_Committe_Notes", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+        
+    Selection.Replace What:="ProjectCastle-", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+        
+    Selection.Replace What:="_VIP_COMMITTEE", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+    
+    Selection.Replace What:="_Committe_Notes", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+        
+    Selection.Replace What:="_COMMITTEE", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+        
+    Selection.Replace What:="_COMMITTEE_NOTES", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+
+    Selection.Replace What:="_NOTES", Replacement:="", LookAt:=xlPart, _
+        SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
+        ReplaceFormat:=False
+
+    Columns("A:D").Select
+    Selection.Replace What:=",", Replacement:=", ", LookAt:=xlPart, SearchOrder _
+        :=xlByRows, MatchCase:=False, SearchFormat:=False, ReplaceFormat:=False
+
+'--------------------------------------------------------------------------
+'                       Saves the txt file as an xlsx
+'--------------------------------------------------------------------------
+Workbooks(CSV).Activate
+ActiveWorkbook.SaveAs "I:\RDM_Share\temp\Andres\Import\Folder Checks\Import_Folders_" & Date & ".xlsx", FileFormat:=xlOpenXMLWorkbook
+End Sub
+
+Sub Check_Folder()
+
+Application.ScreenUpdating = False
+'|///////////////////////////////////////////////////////////////////////////////
+'|                                                                              |
+'|           Opens import tracker and checks if the folder path exists, if it   |
+'|                      does not, it will add it to the sheet                   |
+'|                                                                              |
+'|///////////////////////////////////////////////////////////////////////////////
+
+Dim CSV As String
+Dim Import As String
+Dim Last_Row As Integer
+Dim Last_Row2 As Integer
+Dim Import_Value As String
+Dim CSV_Case As String
+Dim x As Integer
+Dim i As Integer
+Dim y As Integer
+Dim c As Object
+Dim Database As String
+Dim Time As Date
+Dim Folder As String
+
+Import = "Import Tracker.xlsx"
+CSV = "Import_Folders_" & Date & ".xlsx"
+'CSV = "Import_Folders_25.01.2017.csv"
+Workbooks(CSV).Activate
+Sheets(1).Select
+Last_Row = ActiveSheet.Cells(Rows.Count, "A").End(xlUp).Row
+
+
+Workbooks(Import).Activate
+Sheets(1).Select
+Last_Row2 = ActiveSheet.Cells(Rows.Count, "A").End(xlUp).Row
+
+For i = 2 To Last_Row '\\--------------2 bc of headers
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\|
+'|                    Gets values from the python csv                  |
+'|/////////////////////////////////////////////////////////////////////|
+    Workbooks(CSV).Activate
+    Sheets(1).Select
+    CSV_Case = Range("D" & i).Value
+    Database = Range("B" & i).Value
+    Time = Range("C" & i).Value
+    Folder = Range("A" & i).Value
+    
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\|
+'|           Checks to see if the python CVS values exist in the trakcer,     |
+'|                       if not adds them to last row                         |
+'|\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\|
+
+    Workbooks(Import).Activate
+   
+    With Workbooks(Import).Worksheets(1).Range("D1:" & "D" & Last_Row2)
+        Set c = .Find(CSV_Case, LookIn:=xlValues)
+        If c Is Nothing Then
+            If InStr(CSV_Case, "DU") > 0 Then
+    
+                Workbooks("Import_Folder_Check.xlsm").Activate
+                Sheets("Missing Loadfiles").Select
+                Last_Row = ActiveSheet.Cells(Rows.Count, "A").End(xlUp).Row + 1
+                
+                Range("B" & Last_Row).Value = CSV_Case
+    
+                
+                Range("C" & Last_Row).Value = Time
+                Range("C" & Last_Row).Select
+                Selection.NumberFormat = "m/d/yyyy"
+                
+                Range("D" & Last_Row).Value = Folder
+    
+                
+                Range("A" & Last_Row).Value = Database
+            End If
+        End If
+    End With
+Next i
+Workbooks(CSV).Close savechanges:=True
+Application.ScreenUpdating = True
+Workbooks("Import_Folder_Check.xlsm").Activate
+End Sub
+
+Sub Check_Import_tracker_open()
+
+'|///////////////////////////////////////////////////////////////////////////////
+'|                                                                              |
+'|           Checks to see if the Export tracker is open, if not it will open   |
+'|                              a dialog box to open it                         |
+'|                                                                              |
+'|///////////////////////////////////////////////////////////////////////////////
+
+Dim wbk As Object
+Dim Tracker As String
+
+
+On Error Resume Next
+Set wbk = Workbooks("Import Tracker.xlsx")
+If wbk Is Nothing Then
+    MsgBox ("Please open the Import Tracker"), , "Import Tracker not Open"
+    Tracker = Application.GetOpenFilename
+    
+    If Tracker <> "I:\RDM_Share\10_Data_Team\Normal_Export_Tracker.xlsx" Then
+        MsgBox "Export Tracker was not opened. Exiting Script...GOODBYE!", , "Wrong Excel Opened"
+        Exit Sub
+    Else:
+        
+        Workbooks.Open (Tracker)
+        Call Python
+    End If
+Else
+    UserForm1.Show
+End If
+
+End Sub
+
+Sub Rel_Check()
+Dim Rel_Case As String
+Dim i As Integer
+Dim Last_Row As Integer
+Dim Last_Row2 As Integer
+Dim c As Object
+Dim Case_Loc As String
+
+Sheets(2).Select
+Last_Row2 = ActiveSheet.Cells(Rows.Count, "B").End(xlUp).Row
+
+Sheets(3).Select
+Last_Row = ActiveSheet.Cells(Rows.Count, "C").End(xlUp).Row
+
+
+
+For i = 2 To Last_Row '\\--------------2 bc of headers
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\Gets values from the sheet with Relativity Values\\\\\\\\\\\\\\\\\\\
+    Rel_Case = Sheets(3).Range("C" & i).Value
+    
+'\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\|
+'|           Checks to see if the python CVS values exist in the trakcer,     |
+'|                       if not adds them to last row                         |
+'|\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\|
+
+    With Worksheets(2).Range("B1:" & "B" & Last_Row2)
+        Set c = .Find(Rel_Case, LookIn:=xlValues)
+            Case_Loc = c.Row
+            Sheets(2).Select
+            Range("A" & Case_Loc & ":D" & Case_Loc).Select
+            With Selection.Interior
+                .Pattern = xlSolid
+                .PatternColorIndex = xlAutomatic
+                .Color = 5287936
+                .TintAndShade = 0
+                .PatternTintAndShade = 0
+            End With
+    End With
+Next i
+
+End Sub
