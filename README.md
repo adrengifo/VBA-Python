@@ -1,1 +1,2 @@
 # VBA-Python
+This is a VBA-Python integration. The Excel has a button that once pressed will call a python script. The python script will then crawl in the directories to find created folders called "Cases" created after the specified date found on the excel. The python script will produce a text file as output. The VBA code will then open the text file, and convert it to excel format while performing some data cleansing. The newly created excel is then used to corss reference a master tracker. If the case cannot be found it will then copy the case number into a sheet. 
